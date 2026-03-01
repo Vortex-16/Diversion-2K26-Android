@@ -92,5 +92,5 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.5.0")
     
     // MetaMask SDK regarding Native Integration
-    implementation("io.metamask.androidsdk:metamask-android-sdk:0.5.1")
+    implementation("io.metamask.androidsdk:metamask-android-sdk:0.7.3")
 }

@@ -55,7 +55,13 @@
             </intent-filter>
             
             <!-- Deep link for WalletConnect callbacks -->
-
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="chaintorque" />
+                <data android:host="metamask" />
+            </intent-filter>
         </activity>
     </application>
 

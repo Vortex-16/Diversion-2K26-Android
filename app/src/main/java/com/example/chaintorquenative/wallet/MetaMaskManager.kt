@@ -198,7 +198,7 @@ class MetaMaskManager @Inject constructor() {
         val params: MutableMap<String, Any> = HashMap()
         params["chainId"] = "0xaa36a7"
         params["chainName"] = "Sepolia"
-        params["rpcUrls"] = listOf("https://sepolia.infura.io/v3/") // Or generic public RPC
+        params["rpcUrls"] = listOf("https://rpc.sepolia.org") // Or generic public RPC
         params["nativeCurrency"] = mapOf("name" to "Sepolia Ether", "symbol" to "SEP", "decimals" to 18)
         params["blockExplorerUrls"] = listOf("https://sepolia.etherscan.io")
 

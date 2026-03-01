@@ -154,94 +154,58 @@ fun ModelViewerScreen(
                     )
 
                     else -> {
-                        // WebView renders model-viewer HTML
-                        key(reloadKey) {
-                            AndroidView(
-                                modifier = Modifier.fillMaxSize(),
-                                factory = { ctx ->
-                                    WebView(ctx).apply {
-                                        setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
-                                        settings.apply {
-                                            javaScriptEnabled                = true
-                                            domStorageEnabled                = true
-                                            allowFileAccess                  = true   // needed for file:// loading
-                                            allowContentAccess               = true
-                                            loadWithOverviewMode             = true
-                                            useWideViewPort                  = true
-                                            builtInZoomControls              = false
-                                            displayZoomControls              = false
-                                            setSupportZoom(true)
-                                            mediaPlaybackRequiresUserGesture = false
-                                            @Suppress("DEPRECATION")
-                                            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW // allow HTTPS model from file://
-                                            cacheMode        = WebSettings.LOAD_DEFAULT
-                                        }
-                                        addJavascriptInterface(bridge, "Android")
-                                        webViewClient = object : WebViewClient() {
-                                            override fun shouldOverrideUrlLoading(
-                                                view: WebView, request: WebResourceRequest
-                                            ): Boolean {
-                                                val url = request.url.toString()
-                                                return when {
-                                                    url.startsWith("intent://") -> {
-                                                        try { ctx.startActivity(Intent.parseUri(url, Intent.URI_INTENT_SCHEME)) }
-                                                        catch (e: ActivityNotFoundException) {
-                                                            ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.ar.core")))
-                                                        }
-                                                        true
-                                                    }
-                                                    url.startsWith("file://") || url.startsWith("https://") -> false
-                                                    else -> true
-                                                }
-                                            }
-                                            // Hard fallback: dismiss spinner 3 s after HTML loads,
-                                            // in case the JS bridge never fires (CDN flake, etc.)
-                                            override fun onPageFinished(view: WebView, url: String) {
-                                                scope.launch { delay(3_000); if (isLoading) isLoading = false }
-                                            }
-                                        }
-                                        webChromeClient = WebChromeClient()
-                                        setBackgroundColor(android.graphics.Color.parseColor("#0F172A"))
-
-                                        // Write HTML to a real file so model-viewer's custom element
-                                        // registers correctly (loadDataWithBaseURL breaks it silently).
-                                        val htmlFile = File(ctx.cacheDir, "mv_viewer_$reloadKey.html")
-                                        htmlFile.writeText(viewerHtml)
-                                        loadUrl("file://${htmlFile.absolutePath}")
-                                        webViewRef = this
-                                    }
-                                }
+                        // Launch Scene Viewer directly!
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.ViewInAr,
+                                contentDescription = "3D Viewer",
+                                tint = Color.White,
+                                modifier = Modifier.size(64.dp)
                             )
-                        }
-
-                        // Loading overlay — fades out once WebView finishes
-                        if (isLoading) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(ViewerBg),
-                                contentAlignment = Alignment.Center
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Ready to View",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Launch the 3D viewer to see this model in 3D or AR.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White.copy(alpha = 0.7f),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(32.dp))
+                            
+                            val localContext = LocalContext.current
+                            Button(
+                                onClick = {
+                                    val sceneViewerIntent = Intent(Intent.ACTION_VIEW)
+                                    val uri = Uri.parse("https://arvr.google.com/scene-viewer/1.0").buildUpon()
+                                        .appendQueryParameter("file", modelUrl)
+                                        .appendQueryParameter("mode", "3d_preferred")
+                                        .appendQueryParameter("title", title)
+                                        .build()
+                                    sceneViewerIntent.data = uri
+                                    sceneViewerIntent.setPackage("com.google.ar.core")
+                                    try {
+                                        localContext.startActivity(sceneViewerIntent)
+                                    } catch (e: ActivityNotFoundException) {
+                                        // Fallback if AR Core isn't installed
+                                        sceneViewerIntent.setPackage(null)
+                                        localContext.startActivity(sceneViewerIntent)
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = ViewerAccent),
+                                modifier = Modifier.fillMaxWidth(0.8f).height(50.dp)
                             ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    CircularProgressIndicator(
-                                        color = ViewerAccent,
-                                        modifier = Modifier.size(56.dp),
-                                        strokeWidth = 3.dp
-                                    )
-                                    Spacer(modifier = Modifier.height(20.dp))
-                                    Text(
-                                        text = "Loading 3D model…",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color.White
-                                    )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = "This may take a moment on first load",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.4f)
-                                    )
-                                }
+                                Text("Open 3D Viewer", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -425,7 +389,7 @@ private fun buildModelViewerHtml(modelUrl: String): String = """
 <body>
   <div id="loading-bar"></div>
   <!-- Non-module IIFE build works reliably in Android WebView loadDataWithBaseURL -->
-  <script src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.4.0/dist/model-viewer.min.js"></script>
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
   <model-viewer
     id="viewer"
